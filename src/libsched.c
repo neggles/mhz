@@ -147,17 +147,8 @@ int custom(char *str, int cpu) {
  * Return the number of processors in this host
  */
 int sched_ncpus() {
-#ifdef MP_NPROCS
-    /* SGI IRIX interface */
-    return sysmp(MP_NPROCS);
-#elif defined(HAVE_MPCTL)
-    /* HP-UX interface */
-    return mpctl(MPC_GETNUMSPUS_SYS, 0, 0);
-#elif defined(_SC_NPROCESSORS_ONLN)
     /* AIX, Solaris, and Linux interface */
     return sysconf(_SC_NPROCESSORS_ONLN);
-#endif
-    return 1;
 }
 
 /*
@@ -168,62 +159,5 @@ int sched_ncpus() {
  */
 int sched_pin(int cpu) {
     int retval = -1;
-
-#ifdef HAVE_SYSMP
-    /* SGI IRIX interface */
-    retval = sysmp(MP_MUSTRUN, cpu);
-#elif defined(HAVE_MPCTL)
-    /* HP-UX interface */
-    retval = mpctl(MPC_SET_PROCESS, cpu, MPC_SELFPID);
-#elif defined(HAVE_BINDPROCESSOR)
-    /* AIX interface */
-    retval = bindprocessor(BINDPROCESS, getpid(), cpu);
-#elif defined(HAVE_PROCESSOR_BIND)
-    /* Solaris interface */
-    retval = processor_bind(P_PID, P_MYPID, cpu, NULL);
-#elif defined(HAVE_SCHED_SETAFFINITY)
-    /* Linux interface */
-    static unsigned long *mask    = NULL;
-    static unsigned long *cpumask = NULL;
-    static int            sz      = 0;
-    static int            ncpus   = 0;
-    int                   i;
-    int                   j;
-
-    if (cpumask == NULL) {
-        sz      = 1 + (2 * sched_ncpus()) / (8 * sizeof(unsigned long));
-        mask    = (unsigned long *)malloc(sz * sizeof(unsigned long));
-        cpumask = (unsigned long *)malloc(sz * sizeof(unsigned long));
-        retval  = sched_getaffinity(0, sz * sizeof(unsigned long), cpumask);
-        if (retval < 0) perror("sched_getaffinity:");
-        if (retval < 0) return retval;
-
-        for (i = 0; i < sz * 8 * sizeof(unsigned long); ++i) {
-            int word = i / (8 * sizeof(unsigned long));
-            int bit  = i % (8 * sizeof(unsigned long));
-            if (cpumask[word] & (1 << bit)) ncpus++;
-        }
-    }
-    cpu %= ncpus;
-
-    bzero(mask, sz * sizeof(unsigned long));
-    for (i = 0, j = 0; i < sz * 8 * sizeof(unsigned long); ++i) {
-        int word = i / (8 * sizeof(unsigned long));
-        int bit  = i % (8 * sizeof(unsigned long));
-        if (cpumask[word] & (1 << bit)) {
-            if (j >= cpu) {
-                mask[word] |= (1 << bit);
-                break;
-            }
-            j++;
-        }
-    }
-    retval = sched_setaffinity(0, sz * sizeof(unsigned long), mask);
-    if (retval < 0) perror("sched_setaffinity:");
-#    ifdef _DEBUG
-    fprintf(stderr, "sched_pin(%d): pid=%d, returning %d\n", cpu, (int)getpid(), retval);
-#    endif /* _DEBUG */
-
-#endif
     return retval;
 }
