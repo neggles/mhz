@@ -1,48 +1,48 @@
 # tool macros
-CC ?= $(CROSS_COMPILE)gcc
-CXX ?= $(CROSS_COMPILE)g++
-STRIP ?= $(CROSS_COMPILE)strip
-CFLAGS := -std=gnu99 -static -Werror -O0 -g -I../include
-CXXFLAGS :=
-DBGFLAGS := -g
+CC        := $(CROSS_COMPILE)gcc
+CXX       := $(CROSS_COMPILE)g++
+STRIP     := $(CROSS_COMPILE)strip
+CFLAGS    := -std=gnu99 -static -Werror -Wno-unused-result -O2 -I../include
+LDFLAGS   := -lm
+DBGFLAGS  := -g
 COBJFLAGS := $(CFLAGS) -c
 
 # path macros
-BIN_PATH := bin
-OBJ_PATH := obj
-SRC_PATH := src
-DBG_PATH := debug
+BIN_PATH  := bin
+OBJ_PATH  := obj
+SRC_PATH  := src
+DBG_PATH  := debug
 
 # compile macros
-TARGET_NAME := mhz
-TARGET := $(BIN_PATH)/$(TARGET_NAME)
+TARGET_NAME  := mhz
+TARGET       := $(BIN_PATH)/$(TARGET_NAME)
 TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)_debug
 TARGET_STRIP := $(TARGET_NAME)
 
 # src files & obj files
-SRC := $(foreach x, $(SRC_PATH), $(wildcard $(addprefix $(x)/*,.c*)))
-OBJ := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
+SRC       := $(foreach x, $(SRC_PATH), $(wildcard $(addprefix $(x)/*,.c*)))
+OBJ       := $(addprefix $(OBJ_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
 OBJ_DEBUG := $(addprefix $(DBG_PATH)/, $(addsuffix .o, $(notdir $(basename $(SRC)))))
 
 # clean files list
 DISTCLEAN_LIST := $(OBJ) $(OBJ_DEBUG)
-CLEAN_LIST := $(TARGET) $(TARGET_DEBUG) $(DISTCLEAN_LIST)
+CLEAN_LIST     := $(TARGET) $(TARGET_DEBUG) $(DISTCLEAN_LIST)
 
 # default rule
 default: makedir all
 
 # non-phony targets
 $(TARGET): $(OBJ)
-	$(CC) -o $@ $(OBJ) $(CFLAGS)
+	$(CC) -o $@ $(OBJ) $(CFLAGS) $(LDFLAGS)
 
 $(OBJ_PATH)/%.o: $(SRC_PATH)/%.c*
-	$(CC) $(COBJFLAGS) -o $@ $<
+	$(CC) $(COBJFLAGS) $(LDFLAGS) -o $@ $<
 
 $(DBG_PATH)/%.o: $(SRC_PATH)/%.c*
-	$(CC) $(COBJFLAGS) $(DBGFLAGS) -o $@ $<
+	$(CC) $(COBJFLAGS) $(LDFLAGS) $(DBGFLAGS) -o $@ $<
 
 $(TARGET_DEBUG): $(OBJ_DEBUG)
-	$(CC) $(CFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(DBGFLAGS) $(OBJ_DEBUG) -o $@
 
 $(TARGET_STRIP): $(TARGET)
 	$(STRIP) -o $@ $<
