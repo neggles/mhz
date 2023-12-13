@@ -113,6 +113,9 @@ $RECYCLE.BIN/
 
 ### Local ###
 
+# build binary artifacts
+/bin/mhz*
+
 # final output binary and gzipped binary
 /mhz
 /mhz.gz
