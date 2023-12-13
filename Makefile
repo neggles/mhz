@@ -63,7 +63,9 @@ strip: $(TARGET_STRIP)
 clean:
 	@echo CLEAN $(CLEAN_LIST)
 	@rm -f $(CLEAN_LIST)
+	@rm -f $(TARGET_NAME)
 
 distclean:
 	@echo CLEAN $(DISTCLEAN_LIST)
 	@rm -f $(DISTCLEAN_LIST)
+	@rm -f $(TARGET_NAME)
