@@ -1,3 +1,77 @@
+# Created by https://www.toptal.com/developers/gitignore/api/linux,macos,windows,visualstudiocode,cmake,c
+# Edit at https://www.toptal.com/developers/gitignore?templates=linux,macos,windows,visualstudiocode,cmake,c
+
+### C ###
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Linker output
+*.ilk
+*.map
+*.exp
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Kernel Module Compile Results
+*.mod*
+*.cmd
+.tmp_versions/
+modules.order
+Module.symvers
+Mkfile.old
+dkms.conf
+
+### CMake ###
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+Testing
+Makefile
+cmake_install.cmake
+install_manifest.txt
+compile_commands.json
+CTestTestfile.cmake
+_deps
+
+### CMake Patch ###
+# External projects
+*-prefix/
+
 ### Linux ###
 *~
 
@@ -91,31 +165,18 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-### C++ ###
-# Prerequisites
-*.d
+# End of https://www.toptal.com/developers/gitignore/api/linux,macos,windows,visualstudiocode,cmake,c
 
-# Compiled Object files
-*.lo
-*.o
+# direnv
+/.envrc
+/.envrc.*
 
-# Compiled Dynamic libraries
-*.so
+# clangd cache
+/.cache/
 
-# Compiled Static libraries
-*.la
-*.a
-*.lib
+# cmake build dir
+/build/
 
-# Executables
-*.exe
-*.out
-
-### Local ###
-
-# build binary artifacts
-/bin/mhz*
-
-# final output binary and gzipped binary
-/mhz
-/mhz.gz
+# local misc and temp
+/misc/
+/temp/

@@ -102,41 +102,39 @@
  *******************************************************************
  */
 
-#define _GNU_SOURCE
-
-char *id = "$Id$\n";
-
 
 #include "mhz.h"
-#include <math.h>
 
-typedef long TYPE;
+#include "libstats.h"
+#include "libtiming.h"
+
+#include <getopt.h>
+#include <stdlib.h>
+
 
 #define TEN(A)     A A A A A A A A A A
 #define HUNDRED(A) TEN(A) TEN(A) TEN(A) TEN(A) TEN(A) TEN(A) TEN(A) TEN(A) TEN(A) TEN(A)
 
-#define MHZ(M, contents)                                                                    \
-    char *name_##M() {                                                                      \
-        return #contents;                                                                   \
-    }                                                                                       \
-                                                                                            \
-    TYPE **_mhz_##M(register long n, register TYPE **p, register TYPE a, register TYPE b) { \
-        for (; n > 0; --n) {                                                                \
-            HUNDRED(contents)                                                               \
-        }                                                                                   \
-        return p + a + b;                                                                   \
-    }                                                                                       \
-                                                                                            \
-    void mhz_##M(int enough) {                                                              \
-        TYPE  __i = 1;                                                                      \
-        TYPE *__x = (TYPE *)&__x, **__p = (TYPE **)__x, **__q = NULL;                       \
-        _mhz_##M(1, __p, 1, 1);                                                             \
-        BENCH1(__q = _mhz_##M(__n, __p, __i, __i); __n = 1;, enough)                        \
-        use_pointer((void *)__q);                                                           \
-        save_n(100 * get_n()); /* # of expressions executed */                              \
+#define MHZ(M, contents)                                                                                    \
+    char *name_##M() { return #contents; }                                                                  \
+                                                                                                            \
+    uint64_t **_mhz_##M(register long n, register uint64_t **p, register uint64_t a, register uint64_t b) { \
+        for (; n > 0; --n) {                                                                                \
+            HUNDRED(contents)                                                                               \
+        }                                                                                                   \
+        return p + a + b;                                                                                   \
+    }                                                                                                       \
+                                                                                                            \
+    void mhz_##M(int enough) {                                                                              \
+        uint64_t  __i = 1;                                                                                  \
+        uint64_t *__x = (uint64_t *)&__x, **__p = (uint64_t **)__x, **__q = NULL;                           \
+        _mhz_##M(1, __p, 1, 1);                                                                             \
+        BENCH1(__q = _mhz_##M(__n, __p, __i, __i); __n = 1;, enough)                                        \
+        use_pointer((void *)__q);                                                                           \
+        save_n(100 * get_n()); /* # of expressions executed */                                              \
     }
 
-MHZ(1, p = (TYPE **)*p;)
+MHZ(1, p = (uint64_t **)*p;)
 MHZ(2, a ^= a + a;)
 MHZ(3, a ^= a + a + a;)
 MHZ(4, a >>= b;)
@@ -152,8 +150,8 @@ loop_f loops[] = {
 };
 
 
-#define NTESTS          (sizeof(loops) / sizeof(loop_f))
-#define BIT_SET(A, bit) ((A)&1 << (bit))
+#define NUM_LOOPS       (size_t)(sizeof(loops) / sizeof(loop_f))
+#define BIT_SET(A, bit) ((A) & 1 << (bit))
 
 
 void mhz_usage(int argc, char *argv[], char *usage) {
@@ -353,11 +351,11 @@ double gcd(double values[], int size) {
  */
 int compute_mhz(result_t *r) {
     int    i, j, mhz[2], n, subset, ntests;
-    double data[NTESTS], results[1 << NTESTS];
+    double data[NUM_LOOPS], results[1 << NUM_LOOPS];
 
     for (i = 0; i < 2; ++i) {
-        for (subset = 0, ntests = 0; subset < (1 << NTESTS); ++subset) {
-            for (j = 0, n = 0; j < NTESTS; ++j)
+        for (subset = 0, ntests = 0; subset < (1 << NUM_LOOPS); ++subset) {
+            for (j = 0, n = 0; j < NUM_LOOPS; ++j)
                 if (BIT_SET(subset, j) && r[j].N > TRIES / 2)
                     data[n++] = r[j].v[r[j].N - 1 - i].u / (double)r[j].v[r[j].N - 1 - i].n;
             if (n < 2 || (n = filter_data(data, n)) < 2 || classes(data, n) < 2) continue;
@@ -374,7 +372,7 @@ int compute_mhz(result_t *r) {
 void save_data(result_t *data, result_t *data_save) {
     int i;
 
-    for (i = 0; i < NTESTS; ++i) {
+    for (i = 0; i < NUM_LOOPS; ++i) {
         data_save[i] = data[i];
     }
 }
@@ -385,7 +383,7 @@ void print_data(double mhz, result_t *data) {
     char *uname    = "uname";
     char *email    = "email";
     int   speed    = -1;
-    char *names[NTESTS];
+    char *names[NUM_LOOPS];
 
     names[0] = name_1();
     names[1] = name_2();
@@ -397,17 +395,26 @@ void print_data(double mhz, result_t *data) {
     names[7] = name_8();
     names[8] = name_9();
 
-    printf("/* \"%s\", \"%s\", \"%s\", %d, %.0f, %d, %f, %lu */\n", CPU_name, uname, email, speed, mhz,
-           get_enough(0), l_overhead(), t_overhead());
+    printf("/* \"%s\", \"%s\", \"%s\", %d, %.0f, %d, %f, %lu */\n",
+           CPU_name,
+           uname,
+           email,
+           speed,
+           mhz,
+           get_enough(0),
+           l_overhead(),
+           t_overhead());
     printf("result_t* data[] = { \n");
-    for (i = 0; i < NTESTS; ++i) {
+    for (i = 0; i < NUM_LOOPS; ++i) {
         printf("\t/* %s */ { %d, {", names[i], data[i].N);
         for (j = 0; j < data[i].N; ++j) {
-            printf("\n\t\t{ /* %f */ %lu, %lu}", data[i].v[j].u / (100. * data[i].v[j].n),
-                   (unsigned long)data[i].v[j].u, (unsigned long)data[i].v[j].n);
+            printf("\n\t\t{ /* %f */ %lu, %lu}",
+                   data[i].v[j].u / (100. * data[i].v[j].n),
+                   (unsigned long)data[i].v[j].u,
+                   (unsigned long)data[i].v[j].n);
             if (j < TRIES - 1) printf(", ");
         }
-        if (i < NTESTS - 1)
+        if (i < NUM_LOOPS - 1)
             printf("}},\n");
         else
             printf("}}\n");
@@ -418,29 +425,31 @@ void print_data(double mhz, result_t *data) {
 int main(int ac, char **av) {
     int      c, i, j, k, mhz = -1;
     double   runtime;
-    result_t data[NTESTS];
-    result_t data_save[NTESTS];
+    result_t data[NUM_LOOPS];
+    result_t data_save[NUM_LOOPS];
     char    *usage = "[-d] [-c]\n";
 
     putenv("LOOP_O=0.0"); /* should be at most 1% */
 
-    runtime = (NTESTS * TRIES * 3 * get_enough(0)) / 1000000.;
-    if (runtime > 3.) { fprintf(stderr, "mhz: should take approximately %.0f seconds\n", runtime); }
+    runtime = (double)(NUM_LOOPS * TRIES * 3 * get_enough(0)) / 1000000.0;
+    if (runtime > 3.) {
+        fprintf(stderr, "mhz: should take approximately %.0f seconds\n", runtime);
+    }
 
     /* make three efforts to get reliable data */
     for (i = 0; i < 3 && mhz < 0; ++i) {
         /* initialize the data arrays */
-        for (j = 0; j < NTESTS; ++j)
+        for (j = 0; j < NUM_LOOPS; ++j)
             insertinit(&data[j]);
 
         /*
          * collect the data; try to minimize impact of activity bursts
-         * by putting NTESTS in the inner loop so a burst will affect
+         * by putting NUM_LOOPS in the inner loop so a burst will affect
          * one data point for all expressions first, rather than all
          * data points for one expression.
          */
         for (j = 0; j < TRIES; ++j) {
-            for (k = 0; k < NTESTS; ++k) {
+            for (k = 0; k < NUM_LOOPS; ++k) {
                 (*loops[k])(0);
                 insertsort(gettime(), get_n(), &data[k]);
             }
@@ -457,8 +466,12 @@ int main(int ac, char **av) {
                     mhz = 0;
                 }
                 break;
-            case 'd': print_data(mhz, data_save); break;
-            default: mhz_usage(ac, av, usage); break;
+            case 'd':
+                print_data(mhz, data_save);
+                break;
+            default:
+                mhz_usage(ac, av, usage);
+                break;
         }
     }
 
@@ -467,6 +480,8 @@ int main(int ac, char **av) {
         exit(1);
     }
 
-    if (mhz > 0) { printf("%d MHz, %.4f nanosec clock\n", mhz, 1000. / (double)mhz); }
+    if (mhz > 0) {
+        printf("%d MHz, %.4f nanosec clock\n", mhz, 1000. / (double)mhz);
+    }
     exit(0);
 }

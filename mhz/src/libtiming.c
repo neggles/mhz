@@ -13,10 +13,31 @@
  * (2) the version in the sccsid below is included in the report.
  * Support for this development by Sun Microsystems is gratefully acknowledged.
  */
-#define _LIB /* bench.h needs this */
+#include "libtiming.h"
+
 #include "mhz.h"
 
-/* #define _DEBUG */
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/errno.h>
+#include <malloc.h>
+#include <signal.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <strings.h>
+#include <sys/mman.h>
+#include <sys/resource.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/un.h>
+#include <sys/wait.h>
+#include <time.h>
+#include <unistd.h>
 
 #define nz(x) ((x) == 0 ? 1 : (x))
 
@@ -28,37 +49,39 @@
 #define MB    (1000 * 1000.0)
 #define KB    (1000.0)
 
-static struct timeval  start_tv, stop_tv;
-FILE                  *ftiming;
-static volatile uint64 use_result_dummy;
-static uint64          iterations;
-static void            init_timing(void);
+static struct timeval    start_tv, stop_tv;
+FILE                    *ftiming;
+static volatile uint64_t use_result_dummy;
+static uint64_t          iterations;
+static void              init_timing(void);
 
-#if defined(hpux) || defined(__hpux)
-#    include <sys/mman.h>
-#endif
 
 #ifdef RUSAGE
-#    include <sys/resource.h>
-#    define SECS(tv) (tv.tv_sec + tv.tv_usec / 1000000.0)
-#    define mine(f)  (int)(ru_stop.f - ru_start.f)
+    #include <sys/resource.h>
+    #define SECS(tv) (tv.tv_sec + tv.tv_usec / 1000000.0)
+    #define mine(f)  (int)(ru_stop.f - ru_start.f)
 
 static struct rusage ru_start, ru_stop;
 
-void                 rusage(void) {
-                    double sys, user, idle;
-                    double per;
+void rusage(void) {
+    double sys, user, idle;
+    double per;
 
-                    sys  = SECS(ru_stop.ru_stime) - SECS(ru_start.ru_stime);
-                    user = SECS(ru_stop.ru_utime) - SECS(ru_start.ru_utime);
-                    idle = timespent() - (sys + user);
-                    per  = idle / timespent() * 100;
-                    if (!ftiming) ftiming = stderr;
-    fprintf(ftiming, "real=%.2f sys=%.2f user=%.2f idle=%.2f stall=%.0f%% ", timespent(), sys, user, idle, per);
-                    fprintf(ftiming, "rd=%d wr=%d min=%d maj=%d ctx=%d\n", mine(ru_inblock), mine(ru_oublock),
-                            mine(ru_minflt), mine(ru_majflt), mine(ru_nvcsw) + mine(ru_nivcsw));
+    sys  = SECS(ru_stop.ru_stime) - SECS(ru_start.ru_stime);
+    user = SECS(ru_stop.ru_utime) - SECS(ru_start.ru_utime);
+    idle = timespent() - (sys + user);
+    per  = idle / timespent() * 100;
+    if (!ftiming) ftiming = stderr;
+    fprintf(
+        ftiming, "real=%.2f sys=%.2f user=%.2f idle=%.2f stall=%.0f%% ", timespent(), sys, user, idle, per);
+    fprintf(ftiming,
+            "rd=%d wr=%d min=%d maj=%d ctx=%d\n",
+            mine(ru_inblock),
+            mine(ru_oublock),
+            mine(ru_minflt),
+            mine(ru_majflt),
+            mine(ru_nvcsw) + mine(ru_nivcsw));
 }
-
 #endif /* RUSAGE */
 
 
@@ -75,9 +98,7 @@ void (*benchmp_sigterm_handler)(int);
 void (*benchmp_sigchld_handler)(int);
 void (*benchmp_sigalrm_handler)(int);
 
-void benchmp_sigterm(int signo) {
-    benchmp_sigterm_received = 1;
-}
+void benchmp_sigterm(int signo) { benchmp_sigterm_received = 1; }
 
 void benchmp_sigchld(int signo) {
     signal(SIGCHLD, SIG_DFL);
@@ -104,7 +125,7 @@ void benchmp_child(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup,
 void benchmp_parent(int response, int start_signal, int result_signal, int exit_signal, pid_t *pids,
                     int parallel, iter_t iterations, int warmup, int repetitions, int enough);
 
-int  sizeof_result(int repetitions);
+int sizeof_result(int repetitions);
 
 void benchmp(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int enough, int parallel,
              int warmup, int repetitions, void *cookie) {
@@ -123,8 +144,16 @@ void benchmp(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int e
     struct timeval timeout;
 
 #ifdef _DEBUG
-    fprintf(stderr, "benchmp(%p, %p, %p, %d, %d, %d, %d, %p): entering\n", initialize, benchmark, cleanup,
-            enough, parallel, warmup, repetitions, cookie);
+    fprintf(stderr,
+            "benchmp(%p, %p, %p, %d, %d, %d, %d, %p): entering\n",
+            initialize,
+            benchmark,
+            cleanup,
+            enough,
+            parallel,
+            warmup,
+            repetitions,
+            cookie);
 #endif
     enough = get_enough(enough);
 #ifdef _DEBUG
@@ -173,8 +202,17 @@ void benchmp(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int e
     for (i = 0; i < parallel; ++i) {
         if (benchmp_sigterm_received) goto error_exit;
 #ifdef _DEBUG
-        fprintf(stderr, "benchmp(%p, %p, %p, %d, %d, %d, %d, %p): creating child %d\n", initialize, benchmark,
-                cleanup, enough, parallel, warmup, repetitions, cookie, i);
+        fprintf(stderr,
+                "benchmp(%p, %p, %p, %d, %d, %d, %d, %p): creating child %d\n",
+                initialize,
+                benchmark,
+                cleanup,
+                enough,
+                parallel,
+                warmup,
+                repetitions,
+                cookie,
+                i);
 #endif
         switch (pids[i] = fork()) {
             case -1:
@@ -190,18 +228,38 @@ void benchmp(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int e
                 close(result_signal[1]);
                 close(exit_signal[1]);
                 handle_scheduler(i, 0, 0);
-                benchmp_child(initialize, benchmark, cleanup, i, response[1], start_signal[0], result_signal[0],
-                              exit_signal[0], enough, iterations, parallel, repetitions, cookie);
+                benchmp_child(initialize,
+                              benchmark,
+                              cleanup,
+                              i,
+                              response[1],
+                              start_signal[0],
+                              result_signal[0],
+                              exit_signal[0],
+                              enough,
+                              iterations,
+                              parallel,
+                              repetitions,
+                              cookie);
                 exit(0);
-            default: break;
+            default:
+                break;
         }
     }
     close(response[1]);
     close(start_signal[0]);
     close(result_signal[0]);
     close(exit_signal[0]);
-    benchmp_parent(response[0], start_signal[1], result_signal[1], exit_signal[1], pids, parallel, iterations,
-                   warmup, repetitions, enough);
+    benchmp_parent(response[0],
+                   start_signal[1],
+                   result_signal[1],
+                   exit_signal[1],
+                   pids,
+                   parallel,
+                   iterations,
+                   warmup,
+                   repetitions,
+                   enough);
     goto cleanup_exit;
 
 error_exit:
@@ -242,8 +300,14 @@ cleanup_exit:
 
     if (pids) free(pids);
 #ifdef _DEBUG
-    fprintf(stderr, "benchmp(0x%x, 0x%x, 0x%x, %d, %d, 0x%x): exiting\n", (unsigned int)initialize,
-            (unsigned int)benchmark, (unsigned int)cleanup, enough, parallel, (unsigned int)cookie);
+    fprintf(stderr,
+            "benchmp(0x%x, 0x%x, 0x%x, %d, %d, 0x%x): exiting\n",
+            (unsigned int)initialize,
+            (unsigned int)benchmark,
+            (unsigned int)cleanup,
+            enough,
+            parallel,
+            (unsigned int)cookie);
 #endif
 }
 
@@ -287,7 +351,9 @@ void benchmp_parent(int response, int start_signal, int result_signal, int exit_
 #endif
             goto error_exit;
         }
-        if (!FD_ISSET(response, &fds_read)) { continue; }
+        if (!FD_ISSET(response, &fds_read)) {
+            continue;
+        }
 
         bytes_read = read(response, signals, parallel * sizeof(char) - i);
         if (bytes_read < 0) {
@@ -327,7 +393,9 @@ void benchmp_parent(int response, int start_signal, int result_signal, int exit_
 #endif
             goto error_exit;
         }
-        if (!FD_ISSET(response, &fds_read)) { continue; }
+        if (!FD_ISSET(response, &fds_read)) {
+            continue;
+        }
 
         bytes_read = read(response, signals, parallel * sizeof(char) - i);
         if (bytes_read < 0) {
@@ -360,12 +428,15 @@ void benchmp_parent(int response, int start_signal, int result_signal, int exit_
             select(response + 1, &fds_read, NULL, &fds_error, &timeout);
             if (benchmp_sigchld_received || benchmp_sigterm_received || FD_ISSET(response, &fds_error)) {
 #ifdef _DEBUG
-                fprintf(stderr, "benchmp_parent: results, benchmp_sigchld_received=%d\n",
+                fprintf(stderr,
+                        "benchmp_parent: results, benchmp_sigchld_received=%d\n",
                         benchmp_sigchld_received);
 #endif
                 goto error_exit;
             }
-            if (!FD_ISSET(response, &fds_read)) { continue; }
+            if (!FD_ISSET(response, &fds_read)) {
+                continue;
+            }
 
             bytes_read = read(response, buf, n);
             if (bytes_read < 0) {
@@ -437,9 +508,7 @@ typedef struct {
 
 static benchmp_child_state _benchmp_child_state;
 
-int                        benchmp_childid() {
-                           return _benchmp_child_state.childid;
-}
+int benchmp_childid() { return _benchmp_child_state.childid; }
 
 void benchmp_child_sigchld(int signo) {
 #ifdef _DEBUG
@@ -456,15 +525,15 @@ void benchmp_child_sigterm(int signo) {
     signal(SIGTERM, SIG_IGN);
     if (_benchmp_child_state.cleanup) {
         void (*sig)(int) = signal(SIGCHLD, SIG_DFL);
-        if (sig != benchmp_child_sigchld && sig != SIG_DFL) { signal(SIGCHLD, sig); }
+        if (sig != benchmp_child_sigchld && sig != SIG_DFL) {
+            signal(SIGCHLD, sig);
+        }
         (*_benchmp_child_state.cleanup)(0, &_benchmp_child_state);
     }
     exit(0);
 }
 
-void *benchmp_getstate() {
-    return ((void *)&_benchmp_child_state);
-}
+void *benchmp_getstate() { return ((void *)&_benchmp_child_state); }
 
 void benchmp_child(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int childid, int response,
                    int start_signal, int result_signal, int exit_signal, int enough, iter_t iterations,
@@ -546,7 +615,7 @@ iter_t benchmp_interval(void *_state) {
         }
         save_n(state->iterations);
         result -= t_overhead() + get_n() * l_overhead();
-        settime(result >= 0. ? (uint64)result : 0.);
+        settime(result >= 0. ? (uint64_t)result : 0.);
     }
 
     /* if the parent died, then give up */
@@ -582,7 +651,9 @@ iter_t benchmp_interval(void *_state) {
                 insertsort(gettime(), get_n(), get_results());
                 state->i++;
                 /* we completed all the experiments, return results */
-                if (state->i >= state->repetitions) { state->state = cooldown; }
+                if (state->i >= state->repetitions) {
+                    state->state = cooldown;
+                }
             }
             if (state->parallel == 1 && (result < 0.99 * state->enough || result > 1.2 * state->enough)) {
                 if (result > 150.) {
@@ -626,7 +697,9 @@ iter_t benchmp_interval(void *_state) {
                 exit(0);
             }
     };
-    if (state->initialize) { (*state->initialize)(iterations, state->cookie); }
+    if (state->initialize) {
+        (*state->initialize)(iterations, state->cookie);
+    }
     start(0);
     return (iterations);
 }
@@ -635,15 +708,15 @@ iter_t benchmp_interval(void *_state) {
 /*
  * Redirect output someplace else.
  */
-void timing(FILE *out) {
-    ftiming = out;
-}
+void timing(FILE *out) { ftiming = out; }
 
 /*
  * Start timing now.
  */
 void start(struct timeval *tv) {
-    if (tv == NULL) { tv = &start_tv; }
+    if (tv == NULL) {
+        tv = &start_tv;
+    }
 #ifdef RUSAGE
     getrusage(RUSAGE_SELF, &ru_start);
 #endif
@@ -653,20 +726,24 @@ void start(struct timeval *tv) {
 /*
  * Stop timing and return real time in microseconds.
  */
-uint64 stop(struct timeval *begin, struct timeval *end) {
-    if (end == NULL) { end = &stop_tv; }
+uint64_t stop(struct timeval *begin, struct timeval *end) {
+    if (end == NULL) {
+        end = &stop_tv;
+    }
     (void)gettimeofday(end, (struct timezone *)0);
 #ifdef RUSAGE
     getrusage(RUSAGE_SELF, &ru_stop);
 #endif
 
-    if (begin == NULL) { begin = &start_tv; }
+    if (begin == NULL) {
+        begin = &start_tv;
+    }
     return (tvdelta(begin, end));
 }
 
-uint64 now(void) {
+uint64_t now(void) {
     struct timeval t;
-    uint64         m;
+    uint64_t       m;
 
     (void)gettimeofday(&t, (struct timezone *)0);
     m = t.tv_sec;
@@ -682,11 +759,11 @@ double Now(void) {
     return (t.tv_sec * 1000000.0 + t.tv_usec);
 }
 
-uint64 delta(void) {
+uint64_t delta(void) {
     static struct timeval last;
     struct timeval        t;
     struct timeval        diff;
-    uint64                m;
+    uint64_t              m;
 
     (void)gettimeofday(&t, (struct timezone *)0);
     if (last.tv_usec) {
@@ -711,24 +788,20 @@ double Delta(void) {
     return (diff.tv_sec + diff.tv_usec / 1000000.0);
 }
 
-void save_n(uint64 n) {
-    iterations = n;
-}
+void save_n(uint64_t n) { iterations = n; }
 
-uint64 get_n(void) {
-    return (iterations);
-}
+uint64_t get_n(void) { return (iterations); }
 
 /*
  * Make the time spend be usecs.
  */
-void settime(uint64 usecs) {
+void settime(uint64_t usecs) {
     bzero((void *)&start_tv, sizeof(start_tv));
     stop_tv.tv_sec  = usecs / 1000000;
     stop_tv.tv_usec = usecs % 1000000;
 }
 
-void bandwidth(uint64 bytes, uint64 times, int verbose) {
+void bandwidth(uint64_t bytes, uint64_t times, int verbose) {
     struct timeval tdiff;
     double         mb, secs;
 
@@ -756,7 +829,7 @@ void bandwidth(uint64 bytes, uint64 times, int verbose) {
     }
 }
 
-void kb(uint64 bytes) {
+void kb(uint64_t bytes) {
     struct timeval td;
     double         s, bs;
 
@@ -768,7 +841,7 @@ void kb(uint64 bytes) {
     (void)fprintf(ftiming, "%.0f KB/sec\n", bs / KB);
 }
 
-void mb(uint64 bytes) {
+void mb(uint64_t bytes) {
     struct timeval td;
     double         s, bs;
 
@@ -780,7 +853,7 @@ void mb(uint64 bytes) {
     (void)fprintf(ftiming, "%.2f MB/sec\n", bs / MB);
 }
 
-void latency(uint64 xfers, uint64 size) {
+void latency(uint64_t xfers, uint64_t size) {
     struct timeval td;
     double         s;
 
@@ -805,7 +878,7 @@ void latency(uint64 xfers, uint64 size) {
     }
 }
 
-void context(uint64 xfers) {
+void context(uint64_t xfers) {
     struct timeval td;
     double         s;
 
@@ -813,11 +886,14 @@ void context(uint64 xfers) {
     s = td.tv_sec + td.tv_usec / 1000000.0;
     if (s == 0.0) return;
     if (!ftiming) ftiming = stderr;
-    fprintf(ftiming, "%d context switches in %.2f secs, %.0f microsec/switch\n", (int)xfers, s,
+    fprintf(ftiming,
+            "%d context switches in %.2f secs, %.0f microsec/switch\n",
+            (int)xfers,
+            s,
             s * 1000000 / xfers);
 }
 
-void nano(char *s, uint64 n) {
+void nano(char *s, uint64_t n) {
     struct timeval td;
     double         micro;
 
@@ -829,7 +905,7 @@ void nano(char *s, uint64 n) {
     fprintf(ftiming, "%s: %.2f nanoseconds\n", s, micro / n);
 }
 
-void micro(char *s, uint64 n) {
+void micro(char *s, uint64_t n) {
     struct timeval td;
     double         micro;
 
@@ -850,7 +926,7 @@ void micro(char *s, uint64 n) {
 #endif
 }
 
-void micromb(uint64 sz, uint64 n) {
+void micromb(uint64_t sz, uint64_t n) {
     struct timeval td;
     double         mb, micro;
 
@@ -868,9 +944,9 @@ void micromb(uint64 sz, uint64 n) {
     }
 }
 
-void milli(char *s, uint64 n) {
+void milli(char *s, uint64_t n) {
     struct timeval td;
-    uint64         milli;
+    uint64_t       milli;
 
     tvsub(&td, &stop_tv, &start_tv);
     milli = td.tv_sec * 1000 + td.tv_usec / 1000;
@@ -880,7 +956,7 @@ void milli(char *s, uint64 n) {
     fprintf(ftiming, "%s: %d milliseconds\n", s, (int)milli);
 }
 
-void ptime(uint64 n) {
+void ptime(uint64_t n) {
     struct timeval td;
     double         s;
 
@@ -891,9 +967,9 @@ void ptime(uint64 n) {
     fprintf(ftiming, "%d in %.2f secs, %.0f microseconds each\n", (int)n, s, s * 1000000 / n);
 }
 
-uint64 tvdelta(struct timeval *start, struct timeval *stop) {
+uint64_t tvdelta(struct timeval *start, struct timeval *stop) {
     struct timeval td;
-    uint64         usecs;
+    uint64_t       usecs;
 
     tvsub(&td, stop, start);
     usecs = td.tv_sec;
@@ -918,9 +994,7 @@ void tvsub(struct timeval *tdiff, struct timeval *t1, struct timeval *t0) {
     }
 }
 
-uint64 gettime(void) {
-    return (tvdelta(&start_tv, &stop_tv));
-}
+uint64_t gettime(void) { return (tvdelta(&start_tv, &stop_tv)); }
 
 double timespent(void) {
     struct timeval td;
@@ -932,10 +1006,10 @@ double timespent(void) {
 static char p64buf[10][20];
 static int  n;
 
-char       *p64(uint64 big) {
-          char *s = p64buf[n++];
+char *p64(uint64_t big) {
+    char *s = p64buf[n++];
 
-          if (n == 10) n = 0;
+    if (n == 10) n = 0;
 #ifdef linux
     {
         int *a = (int *)&big;
@@ -953,7 +1027,7 @@ char       *p64(uint64 big) {
     return (s);
 }
 
-char *p64sz(uint64 big) {
+char *p64sz(uint64_t big) {
     double d    = big;
     char  *tags = " KMGTPE";
     int    t    = 0;
@@ -962,7 +1036,9 @@ char *p64sz(uint64 big) {
     if (n == 10) n = 0;
     while (d > 512)
         t++, d /= 1024;
-    if (d == 0) { return ("0"); }
+    if (d == 0) {
+        return ("0");
+    }
     if (d < 100) {
         sprintf(s, "%.4f%c", d, tags[t]);
     } else {
@@ -977,8 +1053,8 @@ char last(char *s) {
     return (s[-2]);
 }
 
-uint64 bytes(char *s) {
-    uint64 n;
+uint64_t bytes(char *s) {
+    uint64_t n;
 
     if (sscanf(s, "%lu", &n) < 1) return (0);
 
@@ -987,13 +1063,9 @@ uint64 bytes(char *s) {
     return (n);
 }
 
-void use_int(int result) {
-    use_result_dummy += result;
-}
+void use_int(int result) { use_result_dummy += result; }
 
-void use_pointer(void *result) {
-    use_result_dummy += (long)result;
-}
+void use_pointer(void *result) { use_result_dummy += (long)result; }
 
 int sizeof_result(int repetitions) {
     if (repetitions <= TRIES) return (sizeof(result_t));
@@ -1007,7 +1079,7 @@ void insertinit(result_t *r) {
 }
 
 /* biggest to smallest */
-void insertsort(uint64 u, uint64 n, result_t *r) {
+void insertsort(uint64_t u, uint64_t n, result_t *r) {
     int i, j;
 
     if (u == 0) return;
@@ -1031,9 +1103,7 @@ void insertsort(uint64 u, uint64 n, result_t *r) {
 static result_t  _results;
 static result_t *results = &_results;
 
-result_t        *get_results() {
-           return (results);
-}
+result_t *get_results() { return (results); }
 
 void set_results(result_t *r) {
     results = r;
@@ -1051,8 +1121,8 @@ void save_minimum() {
 }
 
 void save_median() {
-    int    i = results->N / 2;
-    uint64 u, n;
+    int      i = results->N / 2;
+    uint64_t u, n;
 
     if (results->N == 0) {
         n = 1;
@@ -1087,62 +1157,62 @@ static long *two_op(register long *p) {
 static long *p = (long *)&p;
 static long *q = (long *)&q;
 
-double       l_overhead(void) {
-          int           i;
-          uint64        N_save, u_save;
-          static double overhead;
-          static int    initialized = 0;
-          result_t      one, two, *r_save;
+double l_overhead(void) {
+    int           i;
+    uint64_t      N_save, u_save;
+    static double overhead;
+    static int    initialized = 0;
+    result_t      one, two, *r_save;
 
-          init_timing();
-          if (initialized) return (overhead);
+    init_timing();
+    if (initialized) return (overhead);
 
     initialized = 1;
-          if (getenv("LOOP_O")) {
-              overhead = atof(getenv("LOOP_O"));
+    if (getenv("LOOP_O")) {
+        overhead = atof(getenv("LOOP_O"));
     } else {
-              r_save = get_results();
-              N_save = get_n();
-              u_save = gettime();
-              insertinit(&one);
-              insertinit(&two);
-              for (i = 0; i < TRIES; ++i) {
-                  use_pointer((void *)one_op(p));
-                  if (gettime() > t_overhead()) insertsort(gettime() - t_overhead(), get_n(), &one);
+        r_save = get_results();
+        N_save = get_n();
+        u_save = gettime();
+        insertinit(&one);
+        insertinit(&two);
+        for (i = 0; i < TRIES; ++i) {
+            use_pointer((void *)one_op(p));
+            if (gettime() > t_overhead()) insertsort(gettime() - t_overhead(), get_n(), &one);
             use_pointer((void *)two_op(p));
-                  if (gettime() > t_overhead()) insertsort(gettime() - t_overhead(), get_n(), &two);
+            if (gettime() > t_overhead()) insertsort(gettime() - t_overhead(), get_n(), &two);
         }
-              /*
-               * u1 = (n1 * (overhead + work))
-               * u2 = (n2 * (overhead + 2 * work))
-               * ==> overhead = 2. * u1 / n1 - u2 / n2
-               */
-              set_results(&one);
-              save_minimum();
-              overhead = 2. * gettime() / (double)get_n();
+        /*
+         * u1 = (n1 * (overhead + work))
+         * u2 = (n2 * (overhead + 2 * work))
+         * ==> overhead = 2. * u1 / n1 - u2 / n2
+         */
+        set_results(&one);
+        save_minimum();
+        overhead = 2. * gettime() / (double)get_n();
 
-              set_results(&two);
-              save_minimum();
-              overhead -= gettime() / (double)get_n();
+        set_results(&two);
+        save_minimum();
+        overhead -= gettime() / (double)get_n();
 
-              if (overhead < 0.) overhead = 0.; /* Gag */
+        if (overhead < 0.) overhead = 0.; /* Gag */
 
         set_results(r_save);
-              save_n(N_save);
-              settime(u_save);
+        save_n(N_save);
+        settime(u_save);
     }
-          return (overhead);
+    return (overhead);
 }
 
 /*
  * Figure out the timing overhead.  This has to track bench.h
  */
-uint64 t_overhead(void) {
-    uint64         N_save, u_save;
-    static int     initialized = 0;
-    static uint64  overhead    = 0;
-    struct timeval tv;
-    result_t      *r_save;
+uint64_t t_overhead(void) {
+    uint64_t        N_save, u_save;
+    static int      initialized = 0;
+    static uint64_t overhead    = 0;
+    struct timeval  tv;
+    result_t       *r_save;
 
     init_timing();
     if (initialized) return (overhead);
@@ -1182,9 +1252,9 @@ uint64 t_overhead(void) {
 static int long_enough;
 static int compute_enough();
 
-int        get_enough(int e) {
-           init_timing();
-           return (long_enough > e ? long_enough : e);
+int get_enough(int e) {
+    init_timing();
+    return (long_enough > e ? long_enough : e);
 }
 
 
@@ -1198,20 +1268,19 @@ static void init_timing(void) {
     l_overhead();
 }
 
-typedef long  TYPE;
 
-static TYPE **enough_duration(register long N, register TYPE **p) {
+static uint64_t **enough_duration(register long N, register uint64_t **p) {
 #define ENOUGH_DURATION_TEN(one) one one one one one one one one one one
     while (N-- > 0) {
-        ENOUGH_DURATION_TEN(p = (TYPE **)*p;);
+        ENOUGH_DURATION_TEN(p = (uint64_t **)*p;);
     }
     return (p);
 }
 
-static uint64 duration(long N) {
-    uint64 usecs;
-    TYPE  *x = (TYPE *)&x;
-    TYPE **p = (TYPE **)&x;
+static uint64_t duration(long N) {
+    uint64_t   usecs;
+    uint64_t  *x = (uint64_t *)&x;
+    uint64_t **p = (uint64_t **)&x;
 
     start(0);
     p     = enough_duration(N, p);
@@ -1223,9 +1292,9 @@ static uint64 duration(long N) {
 /*
  * find the minimum time that work "N" takes in "tries" tests
  */
-static uint64 time_N(iter_t N) {
+static uint64_t time_N(iter_t N) {
     int      i;
-    uint64   usecs;
+    uint64_t usecs;
     result_t r, *r_save;
 
     r_save = get_results();
@@ -1245,9 +1314,9 @@ static uint64 time_N(iter_t N) {
  * return the amount of work needed to run "enough" microseconds
  */
 static iter_t find_N(int enough) {
-    int           tries;
-    static iter_t N     = 10000;
-    static uint64 usecs = 0;
+    int             tries;
+    static iter_t   N     = 10000;
+    static uint64_t usecs = 0;
 
     if (!usecs) usecs = time_N(N);
 
@@ -1270,34 +1339,36 @@ static iter_t find_N(int enough) {
 /*
  * We want to verify that small modifications proportionally affect the runtime
  */
-static double test_points[] = {1.015, 1.02, 1.035};
+static double test_points[] = { 1.015, 1.02, 1.035 };
 static int    test_time(int enough) {
-       int    i;
-       iter_t N;
-       uint64 usecs, expected, baseline, diff;
+    int      i;
+    iter_t   N;
+    uint64_t usecs, expected, baseline, diff;
 
-       if ((N = find_N(enough)) == 0) return (0);
+    if ((N = find_N(enough)) == 0) return (0);
 
     baseline = time_N(N);
 
-       for (i = 0; i < sizeof(test_points) / sizeof(double); ++i) {
-           usecs    = time_N((int)((double)N * test_points[i]));
-           expected = (uint64)((double)baseline * test_points[i]);
-           diff     = expected > usecs ? expected - usecs : usecs - expected;
-           if (diff / (double)expected > 0.0025) return (0);
+    for (i = 0; i < sizeof(test_points) / sizeof(double); ++i) {
+        usecs    = time_N((int)((double)N * test_points[i]));
+        expected = (uint64_t)((double)baseline * test_points[i]);
+        diff     = expected > usecs ? expected - usecs : usecs - expected;
+        if (diff / (double)expected > 0.0025) return (0);
     }
-       return (1);
+    return (1);
 }
 
 
 /*
  * We want to find the smallest timing interval that has accurate timing
  */
-static int possibilities[] = {5000, 10000, 50000, 100000};
+static int possibilities[] = { 5000, 10000, 50000, 100000 };
 static int compute_enough() {
     int i;
 
-    if (getenv("ENOUGH")) { return (atoi(getenv("ENOUGH"))); }
+    if (getenv("ENOUGH")) {
+        return (atoi(getenv("ENOUGH")));
+    }
     for (i = 0; i < sizeof(possibilities) / sizeof(int); ++i) {
         if (test_time(possibilities[i])) return (possibilities[i]);
     }
@@ -1358,7 +1429,9 @@ long bread(void *buf, long nbytes) {
 void touch(char *buf, int nbytes) {
     static int psize;
 
-    if (!psize) { psize = getpagesize(); }
+    if (!psize) {
+        psize = getpagesize();
+    }
     while (nbytes > 0) {
         *buf = 1;
         buf += psize;
@@ -1401,16 +1474,31 @@ size_t *permutation(int max, int scale) {
 }
 
 int cp(char *src, char *dst, mode_t mode) {
-    int     sfd, dfd;
+    int     sfd, dfd, ret = 0;
     char    buf[8192];
     ssize_t size;
 
-    if ((sfd = open(src, O_RDONLY)) < 0) { return -1; }
-    if ((dfd = open(dst, O_CREAT | O_TRUNC | O_RDWR, mode)) < 0) { return -1; }
-    while ((size = read(sfd, buf, 8192)) > 0) {
-        if (write(dfd, buf, size) < size) return -1;
+    sfd = open(src, O_RDONLY);
+    if (sfd < 0) return -errno;
+
+    dfd = open(dst, O_CREAT | O_TRUNC | O_RDWR, mode);
+    if (dfd < 0) {
+        ret = -errno;
+        goto close_sfd;
     }
+
+    /* copy file contents using for loop */
+    while ((size = read(sfd, buf, 8192)) > 0) {
+        if (write(dfd, buf, size) < size) {
+            ret = -errno;
+            goto close_dfd;
+        }
+    }
+
+close_dfd:
     fsync(dfd);
-    close(sfd);
     close(dfd);
+close_sfd:
+    close(sfd);
+    return ret;
 }

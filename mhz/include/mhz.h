@@ -1,49 +1,14 @@
-/*
- * $Id$
- */
-#ifndef _BENCH_H
-#define _BENCH_H
+#pragma once
 
-#include <assert.h>
-#include <ctype.h>
 
-#include <stdio.h>
 #include <stdint.h>
-#include <unistd.h>
-#include <stdlib.h>
-
-#include <fcntl.h>
-#include <signal.h>
-#include <errno.h>
-#include <strings.h>
-
 #include <sys/types.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <sys/wait.h>
-
-#include <time.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <sys/resource.h>
-
-#include <stdarg.h>
-
-typedef unsigned int  uint;
-typedef unsigned long uint64;
-
-typedef long long     int64;
-
-
-#include "libstats.h"
-#include "libtiming.h"
 
 
 #ifdef DEBUG
-#    define debug(x) fprintf x
+    #define debug(x) fprintf x
 #else
-#    define debug(x)
+    #define debug(x)
 #endif
 
 
@@ -58,11 +23,11 @@ typedef long long     int64;
 #define SOCKOPT_NONE  0
 
 #ifndef SOCKBUF
-#    define SOCKBUF (1024 * 1024)
+    #define SOCKBUF (1024 * 1024)
 #endif
 
 #ifndef XFERSIZE
-#    define XFERSIZE (64 * 1024) /* all bandwidth I/O should use this */
+    #define XFERSIZE (64 * 1024) /* all bandwidth I/O should use this */
 #endif
 
 #define gettime usecs_spent
@@ -70,21 +35,23 @@ typedef long long     int64;
 #define ulong   unsigned long
 
 #ifndef HAVE_DRAND48
-#    ifdef HAVE_RAND
-#        define srand48   srand
-#        define drand48() ((double)rand() / (double)RAND_MAX)
-#    elif defined(HAVE_RANDOM)
-#        define srand48   srandom
-#        define drand48() ((double)random() / (double)RAND_MAX)
-#    endif /* HAVE_RAND */
+    #ifdef HAVE_RAND
+        #define srand48   srand
+        #define drand48() ((double)rand() / (double)RAND_MAX)
+    #elif defined(HAVE_RANDOM)
+        #define srand48   srandom
+        #define drand48() ((double)random() / (double)RAND_MAX)
+    #endif /* HAVE_RAND */
 #endif     /* HAVE_DRAND48 */
 
 #define SMALLEST_LINE 32 /* smallest cache line size */
 #define TIME_OPEN2CLOSE
 
-#define GO_AWAY            \
-    signal(SIGALRM, exit); \
-    alarm(60 * 60);
+#define GO_AWAY                \
+    do {                       \
+        signal(SIGALRM, exit); \
+        alarm(60 * 60);        \
+    } while (false)
 #define REAL_SHORT 50000
 #define SHORT      1000000
 #define MEDIUM     2000000
@@ -94,8 +61,8 @@ typedef long long     int64;
 #define TRIES      11
 
 typedef struct {
-    uint64 u;
-    uint64 n;
+    uint64_t u;
+    uint64_t n;
 } value_t;
 
 typedef struct {
@@ -104,7 +71,7 @@ typedef struct {
 } result_t;
 int       sizeof_result(int N);
 void      insertinit(result_t *r);
-void      insertsort(uint64, uint64, result_t *);
+void      insertsort(uint64_t, uint64_t, result_t *);
 void      save_median();
 void      save_minimum();
 void      set_results(result_t *r);
@@ -130,8 +97,8 @@ result_t *get_results();
         }                                                                   \
         for (__i = 0; __i < __r.N; ++__i) {                                 \
             __oh = __overhead.v[__i].u / (double)__overhead.v[__i].n;       \
-            if (__r.v[__i].u > (uint64)((double)__r.v[__i].n * __oh))       \
-                __r.v[__i].u -= (uint64)((double)__r.v[__i].n * __oh);      \
+            if (__r.v[__i].u > (uint64_t)((double)__r.v[__i].n * __oh))     \
+                __r.v[__i].u -= (uint64_t)((double)__r.v[__i].n * __oh);    \
             else                                                            \
                 __r.v[__i].u = 0;                                           \
         }                                                                   \
@@ -160,7 +127,7 @@ result_t *get_results();
         BENCH_INNER(loop_body, enough);                   \
         __usecs = gettime();                              \
         __usecs -= t_overhead() + get_n() * l_overhead(); \
-        settime(__usecs >= 0. ? (uint64)__usecs : 0);     \
+        settime(__usecs >= 0. ? (uint64_t)__usecs : 0);   \
     }
 
 #define BENCH_INNER(loop_body, enough)                                     \
@@ -190,16 +157,16 @@ result_t *get_results();
                 }                                                          \
             }                                                              \
         } /* while */                                                      \
-        save_n((uint64)__iterations);                                      \
-        settime((uint64)__result);                                         \
+        save_n((uint64_t)__iterations);                                    \
+        settime((uint64_t)__result);                                       \
     }
 
 
 typedef u_long iter_t;
 typedef void (*benchmp_f)(iter_t iterations, void *cookie);
 
-extern void   benchmp(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int enough, int parallel, int warmup,
-                      int repetitions, void *cookie);
+extern void benchmp(benchmp_f initialize, benchmp_f benchmark, benchmp_f cleanup, int enough, int parallel,
+                    int warmup, int repetitions, void *cookie);
 
 /*
  * These are used by weird benchmarks which cannot return, such as page
@@ -213,17 +180,17 @@ extern iter_t benchmp_interval(void *_state);
  * Returns a number in the range [0, ..., N-1], where N is the
  * total number of children (parallelism)
  */
-extern int    benchmp_childid();
+extern int benchmp_childid();
 
 /*
  * harvest dead children to prevent zombies
  */
-extern void   sigchld_wait_handler(int signo);
+extern void sigchld_wait_handler(int signo);
 
 /*
  * Handle optional pinning/placement of processes on an SMP machine.
  */
-extern int    handle_scheduler(int childno, int benchproc, int nbenchprocs);
+extern int handle_scheduler(int childno, int benchproc, int nbenchprocs);
 
 /*
  * Generated from msg.x which is included here:
@@ -245,5 +212,3 @@ extern int    handle_scheduler(int childno, int benchproc, int nbenchprocs);
 #define RPC_EXIT  ((u_long)2)
 extern char *rpc_xact_1();
 extern char *client_rpc_xact_1();
-
-#endif /* _BENCH_H */

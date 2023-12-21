@@ -1,28 +1,33 @@
 #include "mhz.h"
 
-/* #define _DEBUG */
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 
 #if defined(HAVE_SYSMP)
-#    include <sys/sysmp.h>
-#    include <sys/sysinfo.h>
+    #include <sys/sysinfo.h>
+    #include <sys/sysmp.h>
 #endif
 
 #if defined(HAVE_MPCTL)
-#    include <sys/mpctl.h>
+    #include <sys/mpctl.h>
 #endif
 
 #if defined(HAVE_BINDPROCESSOR)
-#    include <sys/processor.h>
+    #include <sys/processor.h>
 #endif
 
 #if defined(HAVE_PROCESSOR_BIND)
-#    include <sys/types.h>
-#    include <sys/processor.h>
-#    include <sys/procset.h>
+    #include <sys/processor.h>
+    #include <sys/procset.h>
+    #include <sys/types.h>
 #endif
 
 #if defined(HAVE_SCHED_SETAFFINITY)
-#    include <sched.h>
+    #include <sched.h>
 #endif
 
 extern int custom(char *str, int cpu);
