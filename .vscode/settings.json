@@ -20,6 +20,8 @@
         "editor.insertSpaces": true,
         "editor.defaultFormatter": "josetr.cmake-language-support-vscode"
     },
+    "cmake.generator": "Unix Makefiles",
+    "cmake.configureOnEdit": true,
 
     "[c]": {
         "editor.detectIndentation": false,
@@ -33,5 +35,11 @@
         }
     },
     "clangd.arguments": ["--query-driver=/usr/bin/gcc"],
-    "clangd.restartAfterCrash": true
+    "clangd.restartAfterCrash": true,
+
+    "[makefile]": {
+        "editor.insertSpaces": false,
+        "editor.tabSize": 8,
+        "editor.detectIndentation": false
+    }
 }

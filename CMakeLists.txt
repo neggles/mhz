@@ -1,25 +1,30 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Debug
+# Set policies
+cmake_policy(SET CMP0042 NEW) # CMP0042: MACOSX_RPATH is enabled by default.
+cmake_policy(SET CMP0053 NEW) # CMP0053: Simplify variable reference and escape sequence evaluation.
+cmake_policy(SET CMP0054 NEW) # CMP0054: Only interpret if() arguments as variables or keywords when unquoted.
+cmake_policy(SET CMP0077 NEW) # CMP0077: option() honors normal variables.
+
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
+
+if(NOT DEFINED CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release"
         CACHE STRING "Set build type to Debug or Release (default Debug)" FORCE)
 endif()
-
-string(TOLOWER "${CMAKE_BUILD_TYPE}" CMAKE_BUILD_TYPE_LOWER)
 
 project(mhz
     VERSION 0.2.0
     DESCRIPTION "architecture-agnostic processor clock measurement utility"
-    LANGUAGES C
+    LANGUAGES C ASM
 )
 
 # Set up GNU conventions and standard FHS paths
 include(GNUInstallDirs)
 
-# Ensure _GNU_SOURCE is available
+# checking for libraries, symbols, LTO support etc
 include(CheckSymbolExists)
-
-# Ensure IPO/LTO is available
+include(CheckLibraryExists)
 include(CheckIPOSupported)
 
 # Check if _GNU_SOURCE is available.
@@ -68,7 +73,7 @@ endif()
 add_compile_options(-funsigned-char)
 
 # Set compiler options
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 option(BUILD_STATIC_LIBS "Build using static libraries" ON)
 
 # Add project subdirectory

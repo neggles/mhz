@@ -8,6 +8,13 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 file(GLOB mhz_SOURCES ./src/*.c)
 file(GLOB mhz_HEADERS ./include/*.h)
 
+# make sure libraries exist
+check_library_exists(m sin "" HAVE_LIB_M)
+
+if(HAVE_LIB_M)
+    list(APPEND mhz_LIBS m)
+endif(HAVE_LIB_M)
+
 # Generate version header
 configure_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/include/version.h.in
@@ -20,18 +27,10 @@ include_directories(
     ${CMAKE_CURRENT_BINARY_DIR}/include
 )
 
-# get math library
-find_library(MATH_LIBRARY m)
-
 # add executable
-add_executable(
-    mhz
-    ${mhz_SOURCES}
-)
-target_link_libraries(mhz
-    PRIVATE
-    ${MATH_LIBRARY}
-)
+add_executable(mhz MACOSX_BUNDLE ${mhz_SOURCES})
+
+target_link_libraries(mhz PRIVATE ${mhz_LIBS})
 target_compile_options(mhz PRIVATE -Wno-unused-result)
 
 # Optional IPO. Do not use IPO if it's not supported by compiler.
