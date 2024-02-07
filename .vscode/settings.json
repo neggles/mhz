@@ -42,5 +42,6 @@
         "editor.insertSpaces": false,
         "editor.tabSize": 8,
         "editor.detectIndentation": false
-    }
+    },
+    "cmake.options.statusBarVisibility": "icon"
 }

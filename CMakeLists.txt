@@ -6,6 +6,17 @@ cmake_policy(SET CMP0053 NEW) # CMP0053: Simplify variable reference and escape 
 cmake_policy(SET CMP0054 NEW) # CMP0054: Only interpret if() arguments as variables or keywords when unquoted.
 cmake_policy(SET CMP0077 NEW) # CMP0077: option() honors normal variables.
 
+# Include cmake modules
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
+# Set up GNU conventions and standard FHS paths
+include(GNUInstallDirs)
+
+# checking for libraries, symbols, LTO support etc
+include(CheckSymbolExists)
+include(CheckLibraryExists)
+include(CheckIPOSupported)
+
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "" FORCE)
 
 if(NOT DEFINED CMAKE_BUILD_TYPE)
@@ -18,14 +29,6 @@ project(mhz
     DESCRIPTION "architecture-agnostic processor clock measurement utility"
     LANGUAGES C ASM
 )
-
-# Set up GNU conventions and standard FHS paths
-include(GNUInstallDirs)
-
-# checking for libraries, symbols, LTO support etc
-include(CheckSymbolExists)
-include(CheckLibraryExists)
-include(CheckIPOSupported)
 
 # Check if _GNU_SOURCE is available.
 if(NOT DEFINED _GNU_SOURCE)
@@ -54,9 +57,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_VERBOSE_MAKEFILE ON)
-    string(APPEND CMAKE_C_FLAGS " -Og")
+    string(APPEND CMAKE_C_FLAGS " -Og -ggdb")
 else()
-    string(APPEND CMAKE_C_FLAGS " -O3")
+    string(APPEND CMAKE_C_FLAGS " -O3 -ggdb")
 endif()
 
 # set C standard options
@@ -78,3 +81,6 @@ option(BUILD_STATIC_LIBS "Build using static libraries" ON)
 
 # Add project subdirectory
 add_subdirectory(${PROJECT_NAME})
+
+# packing
+include(Package)

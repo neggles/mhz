@@ -174,8 +174,9 @@ $RECYCLE.BIN/
 # clangd cache
 /.cache/
 
-# cmake build dir
+# cmake build dir and output dirs
 /build/
+/dist/
 
 # local misc and temp
 /misc/
