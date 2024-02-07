@@ -34,8 +34,9 @@
             "source.fixAll": "explicit"
         }
     },
-    "clangd.arguments": ["--query-driver=/usr/bin/gcc"],
+    "clangd.arguments": ["--query-driver=/usr/bin/clang-17", "--compile-commands-dir=build"],
     "clangd.restartAfterCrash": true,
+    "clangd.onConfigChanged": "restart",
 
     "[makefile]": {
         "editor.insertSpaces": false,

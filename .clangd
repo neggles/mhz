@@ -1,15 +1,6 @@
 CompileFlags:
   Add:
-    - -std=gnu17
     - -Wno-pointer-bool-conversion
     - -Wno-pointer-sign
-  # Remove:
-  Compiler: clang-17
-  CompilationDatabase: build/
-
-# Diagnostics:
-#   UnusedIncludes: None
-#   MissingIncludes: None
-
-# Index:
-#   StandardLibrary: No
+  CompilationDatabase: build/compile_commands.json
+  Compiler: clang
