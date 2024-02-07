@@ -29,7 +29,4 @@ set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 
 set(CPACK_COMPONENTS_GROUPING ALL_COMPONENTS_IN_ONE)
 
-# without this you won't be able to pack only specified component
-set(CPACK_DEB_COMPONENT_INSTALL YES)
-
 include(CPack)

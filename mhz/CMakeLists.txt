@@ -28,7 +28,9 @@ include_directories(
 )
 
 # add executable
-add_executable(mhz MACOSX_BUNDLE ${mhz_SOURCES})
+add_executable(mhz
+    MACOSX_BUNDLE ${mhz_SOURCES}
+)
 
 target_link_libraries(mhz PRIVATE ${mhz_LIBS})
 target_compile_options(mhz PRIVATE -Wno-unused-result)
@@ -42,7 +44,7 @@ else()
     message(WARNING "IPO is not supported: ${output}")
 endif()
 
-install(
-    PROGRAMS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/mhz
+install(TARGETS mhz
+    RUNTIME
     DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

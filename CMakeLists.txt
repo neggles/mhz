@@ -9,9 +9,6 @@ cmake_policy(SET CMP0077 NEW) # CMP0077: option() honors normal variables.
 # Include cmake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-# Set up GNU conventions and standard FHS paths
-include(GNUInstallDirs)
-
 # checking for libraries, symbols, LTO support etc
 include(CheckSymbolExists)
 include(CheckLibraryExists)
@@ -82,5 +79,8 @@ option(BUILD_STATIC_LIBS "Build using static libraries" ON)
 # Add project subdirectory
 add_subdirectory(${PROJECT_NAME})
 
-# packing
+# installation
+include(Install)
+
+# packaging
 include(Package)
